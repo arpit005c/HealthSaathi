@@ -8,35 +8,108 @@ from livekit.agents import (
     AgentSession,
     JobContext,
     JobProcess,
+    RunContext,
     cli,
-    inference,
-    tokenize,
+    function_tool,
     room_io,
+    tokenize,
 )
-from livekit.plugins import murf, silero, google, deepgram, noise_cancellation
+from livekit.plugins import (
+    deepgram,
+    google,
+    murf,
+    noise_cancellation,
+    silero,
+)
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
+
+from src.memory import initialize_database, lookup_user as db_lookup_user
+from src.memory import save_user as db_save_user
+
 
 logger = logging.getLogger("agent")
 
 load_dotenv(".env.local")
 
 
-# Change this prompt to change what your voice agent does.
-# See README.md for example prompts (customer support, language tutor, receptionist).
 SYSTEM_PROMPT = """
 IDENTITY
-You are HealthSaathi AI, a friendly multilingual healthcare assistant that provides general health education and wellness guidance. You are not a doctor.
+
+You are HealthSaathi AI, a friendly multilingual healthcare assistant
+that provides general health education and wellness guidance.
+
+You are not a doctor.
 
 OBJECTIVES
+
 - Help users understand common health concerns.
 - Encourage healthy habits.
 - Suggest when professional medical care may be needed.
+- Remember only information that the user explicitly agrees to save.
 
 KNOWLEDGE
+
 You provide only general health information.
+
 Never diagnose diseases.
 Never prescribe medicines.
 Never interpret medical reports as a licensed doctor.
+
+MEMORY
+
+You have access to two memory tools:
+
+1. lookup_user
+   Use this to check whether the current caller has an existing
+   HealthSaathi memory record.
+
+2. save_user
+   Use this only after the caller has explicitly agreed to save
+   their information.
+
+IMPORTANT:
+
+The tools automatically know the caller's identity.
+
+Never ask the caller for a user ID.
+
+Never invent a user ID.
+
+Never pass a made-up user ID to a memory tool.
+
+On the first meaningful interaction with a caller, use lookup_user
+to check whether they are a returning caller.
+
+If saved memory exists and contains the caller's name, naturally
+greet the returning caller by name.
+
+For example:
+
+"Welcome back, John. How can I help you today?"
+
+Do not reveal private stored information unless it is relevant
+to the current conversation.
+
+CONSENT
+
+Before saving a caller's personal information, clearly ask for
+their permission.
+
+For example:
+
+"Would you like me to remember your name and language preference
+for future conversations?"
+
+Only call save_user after the caller clearly says yes, agrees,
+or gives another unambiguous form of consent.
+
+If the caller says no, does not want memory, or is uncertain,
+do not call save_user.
+
+Never treat silence as consent.
+
+For Health Access, do not save detailed medical notes,
+diagnoses, prescriptions, or unnecessary medical history.
 
 LANGUAGE
 
@@ -49,42 +122,170 @@ If the user speaks Hindi, reply in Hindi.
 If the user speaks Hinglish, reply naturally in Hinglish.
 
 Use simple everyday words.
-Avoid medical jargon unless the user asks for details.
+
+For Hindi, prefer Devanagari script when replying in Hindi.
+
+Do not unnecessarily use medical jargon.
 
 GUARDRAILS
-Refuse requests for medical diagnosis, prescription medicines, or emergency treatment.
+
+Refuse requests for medical diagnosis, prescription medicines,
+or unsafe emergency treatment instructions.
+
 Never claim to be a doctor.
+
 Never guarantee recovery or treatment.
-For emergencies such as chest pain, difficulty breathing, heavy bleeding, unconsciousness, stroke symptoms, or severe allergic reactions, immediately advise the user to contact emergency medical services or visit the nearest hospital.
+
+For emergencies such as chest pain, difficulty breathing,
+heavy bleeding, unconsciousness, stroke symptoms, or severe
+allergic reactions, immediately advise the user to contact
+emergency medical services or visit the nearest hospital.
 
 STYLE
+
 Speak naturally for voice conversations.
+
 Keep answers under three short sentences whenever possible.
-Pause naturally.
+
+Be calm, friendly, respectful, and reassuring.
+
+Ask one question at a time.
+
+Do not overwhelm the caller with long explanations.
+
 If the user is silent, politely ask if they are still there.
 """
 
 
 class Assistant(Agent):
-    def __init__(self) -> None:
-        super().__init__(instructions=SYSTEM_PROMPT)
+    def __init__(self, caller_id: str) -> None:
+        self.caller_id = caller_id
 
-    # To add tools, use the @function_tool decorator.
-    # Here's an example that adds a simple weather tool.
-    # You also have to add `from livekit.agents import function_tool, RunContext` to the top of this file
-    # @function_tool
-    # async def lookup_weather(self, context: RunContext, location: str):
-    #     """Use this tool to look up current weather information in the given location.
-    #
-    #     If the location is not supported by the weather service, the tool will indicate this. You must tell the user the location's weather is unavailable.
-    #
-    #     Args:
-    #         location: The location to look up weather information for (e.g. city name)
-    #     """
-    #
-    #     logger.info(f"Looking up weather for {location}")
-    #
-    #     return "sunny with a temperature of 70 degrees."
+        super().__init__(
+            instructions=SYSTEM_PROMPT
+        )
+
+        logger.info(
+            "HealthSaathi initialized for caller identity: %s",
+            self.caller_id,
+        )
+
+    @function_tool
+    async def lookup_user(
+        self,
+        context: RunContext,
+    ) -> str:
+        """
+        Look up the current caller's saved HealthSaathi memory.
+
+        The caller identity is provided by LiveKit and is not supplied
+        by the language model.
+        """
+
+        logger.info(
+            "Looking up HealthSaathi caller: %s",
+            self.caller_id,
+        )
+
+        user = db_lookup_user(self.caller_id)
+
+        if user is None:
+            logger.info(
+                "No HealthSaathi memory found for caller: %s",
+                self.caller_id,
+            )
+
+            return (
+                "No saved HealthSaathi memory was found for this caller. "
+                "This appears to be a new caller."
+            )
+
+        logger.info(
+            "HealthSaathi memory found for caller %s: name=%s",
+            self.caller_id,
+            user.get("name"),
+        )
+
+        name = user.get("name") or "not set"
+        language = (
+            user.get("language_preference")
+            or "not set"
+        )
+        age_band = (
+            user.get("age_band")
+            or "not set"
+        )
+        last_interaction = (
+            user.get("last_interaction")
+            or "not set"
+        )
+
+        return (
+            "Returning HealthSaathi caller found. "
+            f"Name: {name}. "
+            f"Language preference: {language}. "
+            f"Age band: {age_band}. "
+            f"Last interaction: {last_interaction}. "
+            "Greet the caller naturally by name if appropriate."
+        )
+
+    @function_tool
+    async def save_user(
+        self,
+        context: RunContext,
+        name: str,
+        consent: bool,
+        language_preference: str | None = None,
+        age_band: str | None = None,
+        last_triage_outcome: str | None = None,
+    ) -> str:
+        """
+        Save the current caller's consented HealthSaathi profile.
+
+        The caller identity is automatically taken from LiveKit.
+
+        This tool must only be called after explicit user consent.
+        """
+
+        if not consent:
+            logger.info(
+                "Memory save rejected because consent was not given: %s",
+                self.caller_id,
+            )
+
+            return (
+                "The caller did not give consent. "
+                "Do not save their information."
+            )
+
+        if not name.strip():
+            return (
+                "No valid name was provided, so nothing was saved."
+            )
+
+        logger.info(
+            "Saving consented HealthSaathi memory for caller: %s",
+            self.caller_id,
+        )
+
+        saved = db_save_user(
+            user_id=self.caller_id,
+            name=name.strip(),
+            language_preference=language_preference,
+            age_band=age_band,
+            last_triage_outcome=last_triage_outcome,
+        )
+
+        logger.info(
+            "HealthSaathi memory saved for caller: %s",
+            self.caller_id,
+        )
+
+        return (
+            f"Memory saved successfully for {saved['name']}. "
+            "You may tell the caller that their agreed information "
+            "will be available for future HealthSaathi conversations."
+        )
 
 
 server = AgentServer()
@@ -99,60 +300,58 @@ server.setup_fnc = prewarm
 
 @server.rtc_session(agent_name="my-agent")
 async def my_agent(ctx: JobContext):
-    # Logging setup
-    # Add any other context you want in all log entries here
+
     ctx.log_context_fields = {
         "room": ctx.room.name,
     }
 
-    # Set up a voice AI pipeline using Murf Falcon, Gemini, Deepgram, and the LiveKit turn detector
+    # Make sure the SQLite database exists.
+    initialize_database()
+
+    # Connect to LiveKit first so we can identify the caller.
+    await ctx.connect()
+
+    # Wait for the actual human participant.
+    participant = await ctx.wait_for_participant()
+
+    # IMPORTANT:
+    # This identity comes from LiveKit, not from Gemini.
+    caller_id = participant.identity
+
+    logger.info(
+        "HealthSaathi caller connected: identity=%s name=%s",
+        participant.identity,
+        participant.name,
+    )
+
     session = AgentSession(
-        # Speech-to-text (STT) is your agent's ears, turning the user's speech into text that the LLM can understand
-        # See all available models at https://docs.livekit.io/agents/models/stt/
-        stt=deepgram.STT(model="nova-3", language="multi"),
-        # A Large Language Model (LLM) is your agent's brain, processing user input and generating a response
-        # See all available models at https://docs.livekit.io/agents/models/llm/
+        stt=deepgram.STT(
+            model="nova-3",
+            language="multi",
+        ),
+
         llm=google.LLM(
-                model="gemini-3.5-flash-lite",
-            ),
-        # Text-to-speech (TTS) is your agent's voice, turning the LLM's text into speech that the user can hear
-        # See all available models as well as voice selections at https://docs.livekit.io/agents/models/tts/
+            model="gemini-3.5-flash-lite",
+        ),
+
         tts=murf.TTS(
-                voice="Samar", 
-                style="Conversation",
-                tokenizer=tokenize.basic.SentenceTokenizer(min_sentence_len=2),
-                text_pacing=True
+            voice="Samar",
+            style="Conversation",
+            tokenizer=tokenize.basic.SentenceTokenizer(
+                min_sentence_len=2
             ),
-        # VAD and turn detection are used to determine when the user is speaking and when the agent should respond
-        # See more at https://docs.livekit.io/agents/build/turns
+            text_pacing=True,
+        ),
+
         turn_detection=MultilingualModel(),
+
         vad=ctx.proc.userdata["vad"],
-        # allow the LLM to generate a response while waiting for the end of turn
-        # See more at https://docs.livekit.io/agents/build/audio/#preemptive-generation
+
         preemptive_generation=True,
     )
 
-    # To use a realtime model instead of a voice pipeline, use the following session setup instead.
-    # (Note: This is for the OpenAI Realtime API. For other providers, see https://docs.livekit.io/agents/models/realtime/))
-    # 1. Install livekit-agents[openai]
-    # 2. Set OPENAI_API_KEY in .env.local
-    # 3. Add `from livekit.plugins import openai` to the top of this file
-    # 4. Use the following session setup instead of the version above
-    # session = AgentSession(
-    #     llm=openai.realtime.RealtimeModel(voice="marin")
-    # )
-
-    # # Add a virtual avatar to the session, if desired
-    # # For other providers, see https://docs.livekit.io/agents/models/avatar/
-    # avatar = hedra.AvatarSession(
-    #   avatar_id="...",  # See https://docs.livekit.io/agents/models/avatar/plugins/hedra
-    # )
-    # # Start the avatar and wait for it to join
-    # await avatar.start(session, room=ctx.room)
-
-    # Start the session, which initializes the voice pipeline and warms up the models
     await session.start(
-        agent=Assistant(),
+        agent=Assistant(caller_id=caller_id),
         room=ctx.room,
         room_options=room_io.RoomOptions(
             audio_input=room_io.AudioInputOptions(
@@ -165,9 +364,6 @@ async def my_agent(ctx: JobContext):
             ),
         ),
     )
-
-    # Join the room and connect to the user
-    await ctx.connect()
 
 
 if __name__ == "__main__":

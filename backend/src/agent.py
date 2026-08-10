@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from livekit import rtc
@@ -23,7 +24,8 @@ from livekit.plugins import (
 )
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
-from src.memory import initialize_database, lookup_user as db_lookup_user
+from src.memory import initialize_database
+from src.memory import lookup_user as db_lookup_user
 from src.memory import save_user as db_save_user
 
 
@@ -45,6 +47,8 @@ OBJECTIVES
 - Help users understand common health concerns.
 - Encourage healthy habits.
 - Suggest when professional medical care may be needed.
+- Use the health_triage tool when a caller describes symptoms that
+  require an urgency assessment.
 - Remember only information that the user explicitly agrees to save.
 
 KNOWLEDGE
@@ -69,12 +73,10 @@ You have access to two memory tools:
 
 IMPORTANT:
 
-The tools automatically know the caller's identity.
+The memory tools automatically know the caller's identity.
 
 Never ask the caller for a user ID.
-
 Never invent a user ID.
-
 Never pass a made-up user ID to a memory tool.
 
 On the first meaningful interaction with a caller, use lookup_user
@@ -89,6 +91,47 @@ For example:
 
 Do not reveal private stored information unless it is relevant
 to the current conversation.
+
+HEALTH TRIAGE TOOL
+
+You have access to a health_triage tool.
+
+Use health_triage when the caller describes one or more symptoms
+and wants to know how urgently they should seek professional care.
+
+Examples include:
+- chest pain
+- difficulty breathing
+- heavy bleeding
+- unconsciousness
+- stroke-like symptoms
+- severe allergic reaction
+- severe or worsening symptoms
+
+The tool provides an urgency classification only.
+
+It does NOT diagnose a disease.
+It does NOT prescribe medicine.
+It does NOT replace a doctor.
+
+Do not tell the caller that the tool has diagnosed them.
+
+If the tool returns URGENT, clearly recommend immediate professional
+medical attention.
+
+If the tool returns PROFESSIONAL_CARE, recommend consultation
+with an appropriate healthcare professional.
+
+If the tool returns GENERAL_GUIDANCE, provide general wellness
+guidance while reminding the caller that persistent or worsening
+symptoms should be professionally assessed.
+
+If the tool is unavailable, do not guess or invent a triage result.
+Tell the caller that the assessment is temporarily unavailable
+and recommend professional care when appropriate.
+
+Always mention that the triage result is based on the current
+assessment time.
 
 CONSENT
 
@@ -140,6 +183,9 @@ For emergencies such as chest pain, difficulty breathing,
 heavy bleeding, unconsciousness, stroke symptoms, or severe
 allergic reactions, immediately advise the user to contact
 emergency medical services or visit the nearest hospital.
+
+Do not provide dangerous instructions that could delay emergency
+medical care.
 
 STYLE
 
@@ -207,18 +253,9 @@ class Assistant(Agent):
         )
 
         name = user.get("name") or "not set"
-        language = (
-            user.get("language_preference")
-            or "not set"
-        )
-        age_band = (
-            user.get("age_band")
-            or "not set"
-        )
-        last_interaction = (
-            user.get("last_interaction")
-            or "not set"
-        )
+        language = user.get("language_preference") or "not set"
+        age_band = user.get("age_band") or "not set"
+        last_interaction = user.get("last_interaction") or "not set"
 
         return (
             "Returning HealthSaathi caller found. "
@@ -287,6 +324,142 @@ class Assistant(Agent):
             "will be available for future HealthSaathi conversations."
         )
 
+    @function_tool
+    async def health_triage(
+        self,
+        context: RunContext,
+        symptoms: str,
+    ) -> str:
+        """
+        Assess the urgency level of symptoms described by the caller.
+
+        Use this tool when the caller describes symptoms and needs
+        guidance about how urgently professional medical care may
+        be needed.
+
+        This tool performs a conservative symptom-to-triage-level
+        classification. It does not diagnose diseases, prescribe
+        medication, or replace a healthcare professional.
+
+        Args:
+            symptoms: A concise description of the symptoms reported
+                by the caller.
+        """
+
+        checked_at = datetime.now(timezone.utc).isoformat()
+
+        logger.info(
+            "Running HealthSaathi triage for caller %s: %s",
+            self.caller_id,
+            symptoms,
+        )
+
+        try:
+            text = symptoms.lower().strip()
+
+            if not text:
+                return (
+                    "TRIAGE_UNAVAILABLE. "
+                    "No symptoms were provided. "
+                    f"Assessment time: {checked_at}."
+                )
+
+            # High-priority red-flag symptoms.
+            urgent_terms = [
+                "chest pain",
+                "chest pressure",
+                "chest tightness",
+                "difficulty breathing",
+                "can't breathe",
+                "cannot breathe",
+                "severe breathlessness",
+                "heavy bleeding",
+                "unconscious",
+                "not responding",
+                "stroke",
+                "face drooping",
+                "speech difficulty",
+                "one side weakness",
+                "severe allergic reaction",
+                "anaphylaxis",
+                "coughing blood",
+                "vomiting blood",
+            ]
+
+            if any(term in text for term in urgent_terms):
+                logger.warning(
+                    "URGENT triage result for caller %s",
+                    self.caller_id,
+                )
+
+                return (
+                    "TRIAGE_LEVEL: URGENT. "
+                    "Red-flag symptoms were detected. "
+                    "The caller should seek immediate professional "
+                    "medical attention or contact local emergency "
+                    "medical services. "
+                    f"Assessment time: {checked_at}."
+                )
+
+            # Symptoms that should generally be assessed by a
+            # healthcare professional if persistent, worsening,
+            # or concerning.
+            professional_terms = [
+                "high fever",
+                "persistent fever",
+                "severe pain",
+                "worsening pain",
+                "persistent vomiting",
+                "persistent diarrhea",
+                "dehydration",
+                "fainting",
+                "dizziness",
+                "infection",
+                "swelling",
+                "blood in urine",
+                "blood in stool",
+            ]
+
+            if any(term in text for term in professional_terms):
+                logger.info(
+                    "PROFESSIONAL_CARE triage result for caller %s",
+                    self.caller_id,
+                )
+
+                return (
+                    "TRIAGE_LEVEL: PROFESSIONAL_CARE. "
+                    "The symptoms may need assessment by a healthcare "
+                    "professional, especially if they persist or worsen. "
+                    f"Assessment time: {checked_at}."
+                )
+
+            logger.info(
+                "GENERAL_GUIDANCE triage result for caller %s",
+                self.caller_id,
+            )
+
+            return (
+                "TRIAGE_LEVEL: GENERAL_GUIDANCE. "
+                "No predefined red-flag symptom was detected by this "
+                "basic screening tool. This is not a diagnosis, and "
+                "persistent or worsening symptoms should be assessed "
+                "by a healthcare professional. "
+                f"Assessment time: {checked_at}."
+            )
+
+        except Exception:
+            logger.exception(
+                "HealthSaathi triage tool failed for caller %s",
+                self.caller_id,
+            )
+
+            return (
+                "TRIAGE_UNAVAILABLE. "
+                "The health triage service is temporarily unavailable. "
+                "Do not guess about the caller's condition. "
+                f"Assessment time: {checked_at}."
+            )
+
 
 server = AgentServer()
 
@@ -335,7 +508,7 @@ async def my_agent(ctx: JobContext):
         ),
 
         tts=murf.TTS(
-            voice="Samar",
+            voice="Anisha",
             style="Conversation",
             tokenizer=tokenize.basic.SentenceTokenizer(
                 min_sentence_len=2

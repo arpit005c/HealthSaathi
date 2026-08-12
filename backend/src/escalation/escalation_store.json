@@ -1,0 +1,12 @@
+[
+  {
+    "reference_id": "HS-23168CC8",
+    "caller_id": "health_user_6ac715f9-1c56-4a8f-98a6-7c3340300e10",
+    "summary": "Caller reports emergency symptoms: chest pain and difficulty breathing. Urgency is emergency. Advised to seek immediate emergency medical care.",
+    "urgency": "EMERGENCY",
+    "language": "en",
+    "follow_up_method": "call",
+    "status": "OPEN",
+    "created_at": "2026-08-12T15:34:22.603252+00:00"
+  }
+]

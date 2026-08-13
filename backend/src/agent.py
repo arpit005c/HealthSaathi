@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timezone
+from src.analytics.service import initialize_analytics_table
 
 from dotenv import load_dotenv
 from livekit import rtc
@@ -27,6 +28,8 @@ from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from src.memory import initialize_database
 from src.memory import lookup_user as db_lookup_user
 from src.memory import save_user as db_save_user
+from src.analytics.service import record_call
+
 
 from src.escalation.service import (
     initialize_escalation_table,
@@ -720,10 +723,12 @@ async def my_agent(ctx: JobContext):
     ctx.log_context_fields = {
         "room": ctx.room.name,
     }
-
-    # Make sure both SQLite tables exist.
+    call_started_at = datetime.now(timezone.utc)
+    call_id = ctx.room.name
+    # Make sure all SQLite tables exist.
     initialize_database()
     initialize_escalation_table()
+    initialize_analytics_table()
 
     # Connect to LiveKit first so we can identify the caller.
     await ctx.connect()
@@ -734,6 +739,91 @@ async def my_agent(ctx: JobContext):
     # IMPORTANT:
     # This identity comes from LiveKit, not from Gemini.
     caller_id = participant.identity
+    call_recorded = False
+    disconnect_reason = rtc.DisconnectReason.CLIENT_INITIATED
+
+
+    def on_room_disconnected(reason):
+        nonlocal disconnect_reason
+
+        disconnect_reason = reason
+
+        logger.info(
+            "HealthSaathi LiveKit room disconnected: reason=%s",
+            rtc.DisconnectReason.Name(reason),
+        )
+
+
+    def on_participant_disconnected(disconnected_participant):
+        nonlocal call_recorded
+
+        if call_recorded:
+            return
+
+        if disconnected_participant.identity != caller_id:
+            return
+
+        call_recorded = True
+
+        ended_at = datetime.now(timezone.utc)
+
+        record_call(
+            call_id=call_id,
+            caller_id=caller_id,
+            started_at=call_started_at.isoformat(),
+            ended_at=ended_at.isoformat(),
+            channel="browser",
+            outcome="SUCCESS",
+        )
+
+        logger.info(
+            "HealthSaathi call analytics recorded: call_id=%s outcome=SUCCESS",
+            call_id,
+        )
+
+
+    async def on_job_shutdown(reason: str):
+        nonlocal call_recorded
+
+        if call_recorded:
+         return
+
+        call_recorded = True
+
+        ended_at = datetime.now(timezone.utc)
+
+        failure_reason = reason or "Unknown shutdown reason"
+
+        record_call(
+            call_id=call_id,
+            caller_id=caller_id,
+            started_at=call_started_at.isoformat(),
+            ended_at=ended_at.isoformat(),
+            channel="browser",
+            outcome="FAILED",
+            failure_reason=failure_reason,
+        )
+
+        logger.warning(
+            "HealthSaathi call analytics recorded: "
+            "call_id=%s outcome=FAILED reason=%s",
+            call_id,
+            failure_reason,
+        )
+
+
+    ctx.room.on(
+        "disconnected",
+        on_room_disconnected,
+    )
+
+    ctx.room.on(
+        "participant_disconnected",
+        on_participant_disconnected,
+    )
+
+    ctx.add_shutdown_callback(on_job_shutdown)
+
 
     logger.info(
         "HealthSaathi caller connected: identity=%s name=%s",

@@ -1,14 +1,14 @@
-import { Public_Sans } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import localFont from 'next/font/local';
 import { headers } from 'next/headers';
 import { ThemeProvider } from '@/components/app/theme-provider';
 import { ThemeToggle } from '@/components/app/theme-toggle';
 import { cn } from '@/lib/shadcn/utils';
 import { getAppConfig, getStyles } from '@/lib/utils';
-import '@/styles/globals.css';
+import '../styles/globals.css';
 
-const publicSans = Public_Sans({
-  variable: '--font-public-sans',
+const inter = Inter({
+  variable: '--font-public-sans', // Keeping the variable name to avoid breaking shadcn
   subsets: ['latin'],
 });
 
@@ -47,17 +47,13 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   const hdrs = await headers();
   const appConfig = await getAppConfig(hdrs);
   const styles = getStyles(appConfig);
-  const { pageTitle, pageDescription, companyName, logo, logoDark } = appConfig;
+  const { pageTitle, pageDescription } = appConfig;
 
   return (
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn(
-        publicSans.variable,
-        commitMono.variable,
-        'scroll-smooth font-sans antialiased'
-      )}
+      className={cn(inter.variable, commitMono.variable, 'scroll-smooth font-sans antialiased')}
     >
       <head>
         {styles && <style>{styles}</style>}
@@ -71,33 +67,36 @@ export default async function RootLayout({ children }: RootLayoutProps) {
           enableSystem
           disableTransitionOnChange
         >
-          <header className="fixed top-0 left-0 z-50 hidden w-full flex-row justify-between p-6 md:flex">
-            <a
-              target="_blank"
-              rel="noopener noreferrer"
-              href="https://livekit.io"
-              className="scale-100 transition-transform duration-300 hover:scale-110"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={logo} alt={`${companyName} Logo`} className="block size-6 dark:hidden" />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={logoDark ?? logo}
-                alt={`${companyName} Logo`}
-                className="hidden size-6 dark:block"
-              />
-            </a>
-            <span className="text-foreground font-mono text-xs font-bold tracking-wider uppercase">
-              Built with{' '}
-              <a
-                target="_blank"
-                rel="noopener noreferrer"
-                href="https://docs.livekit.io/agents"
-                className="underline underline-offset-4"
-              >
-                LiveKit Agents
-              </a>
-            </span>
+          <header className="fixed top-0 left-0 z-50 hidden w-full flex-row items-center justify-between p-6 md:flex">
+            <div className="flex items-center gap-3">
+              <div className="bg-primary flex h-10 w-10 items-center justify-center rounded-xl shadow-sm">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-primary-foreground"
+                >
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                </svg>
+              </div>
+              <span className="text-foreground text-lg font-bold tracking-tight">HealthSaathi</span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
+                Secure Voice Health Agent
+              </span>
+              <div className="bg-border h-4 w-px"></div>
+              <span className="text-primary text-xs font-bold tracking-wider uppercase">
+                24/7 Available
+              </span>
+            </div>
           </header>
 
           {children}

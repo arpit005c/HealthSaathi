@@ -1,10 +1,6 @@
-import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import {
-  AccessToken,
-  type AccessTokenOptions,
-  type VideoGrant,
-} from 'livekit-server-sdk';
+import { NextResponse } from 'next/server';
+import { AccessToken, type AccessTokenOptions, type VideoGrant } from 'livekit-server-sdk';
 import { RoomConfiguration } from '@livekit/protocol';
 
 type ConnectionDetails = {
@@ -84,9 +80,7 @@ export async function POST(req: Request) {
     const participantIdentity = userId;
 
     // Room can still be different for every conversation.
-    const roomName = `voice_assistant_room_${Math.floor(
-      Math.random() * 10_000
-    )}`;
+    const roomName = `voice_assistant_room_${Math.floor(Math.random() * 10_000)}`;
 
     const participantToken = await createParticipantToken(
       {

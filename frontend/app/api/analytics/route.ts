@@ -20,27 +20,19 @@ type AnalyticsResponse = {
   recent_calls: AnalyticsCall[];
 };
 
-const DB_PATH = path.join(
-  process.cwd(),
-  '..',
-  'backend',
-  'healthsaathi.db',
-);
+const DB_PATH = path.join(process.cwd(), '..', 'backend', 'healthsaathi.db');
 
 function escapeSqlString(value: string): string {
   return value.replace(/'/g, "''");
 }
 
-async function querySqlite(
-  sql: string,
-): Promise<Record<string, unknown>[]> {
+async function querySqlite(sql: string): Promise<Record<string, unknown>[]> {
   const { execFile } = await import('child_process');
   const { promisify } = await import('util');
 
   const execFileAsync = promisify(execFile);
 
-  const pythonExecutable =
-    process.env.PYTHON_EXECUTABLE || 'python';
+  const pythonExecutable = process.env.PYTHON_EXECUTABLE || 'python';
 
   const pythonScript = `
 import sqlite3
@@ -60,19 +52,12 @@ finally:
     connection.close()
 `;
 
-  const { stdout } = await execFileAsync(
-    pythonExecutable,
-    ['-c', pythonScript, DB_PATH, sql],
-    {
-      windowsHide: true,
-      maxBuffer: 1024 * 1024,
-    },
-  );
+  const { stdout } = await execFileAsync(pythonExecutable, ['-c', pythonScript, DB_PATH, sql], {
+    windowsHide: true,
+    maxBuffer: 1024 * 1024,
+  });
 
-  return JSON.parse(stdout.trim() || '[]') as Record<
-    string,
-    unknown
-  >[];
+  return JSON.parse(stdout.trim() || '[]') as Record<string, unknown>[];
 }
 
 export async function GET() {
@@ -118,38 +103,22 @@ export async function GET() {
     const counts = countRows[0] ?? {};
 
     const totalCalls = Number(counts.total_calls ?? 0);
-    const successfulCalls = Number(
-      counts.successful_calls ?? 0,
-    );
+    const successfulCalls = Number(counts.successful_calls ?? 0);
     const failedCalls = Number(counts.failed_calls ?? 0);
 
     const successRate =
-      totalCalls > 0
-        ? Number(
-            ((successfulCalls / totalCalls) * 100).toFixed(1),
-          )
-        : 0;
+      totalCalls > 0 ? Number(((successfulCalls / totalCalls) * 100).toFixed(1)) : 0;
 
-    const recentCalls: AnalyticsCall[] = recentRows.map(
-      (row) => ({
-        call_id: String(row.call_id ?? ''),
-        started_at: String(row.started_at ?? ''),
-        ended_at: String(row.ended_at ?? ''),
-        duration_seconds: Number(
-          row.duration_seconds ?? 0,
-        ),
-        channel: String(row.channel ?? ''),
-        outcome:
-          row.outcome === 'SUCCESS'
-            ? 'SUCCESS'
-            : 'FAILED',
-        failure_reason:
-          row.outcome === 'FAILED' &&
-          row.failure_reason
-            ? String(row.failure_reason)
-            : null,
-      }),
-    );
+    const recentCalls: AnalyticsCall[] = recentRows.map((row) => ({
+      call_id: String(row.call_id ?? ''),
+      started_at: String(row.started_at ?? ''),
+      ended_at: String(row.ended_at ?? ''),
+      duration_seconds: Number(row.duration_seconds ?? 0),
+      channel: String(row.channel ?? ''),
+      outcome: row.outcome === 'SUCCESS' ? 'SUCCESS' : 'FAILED',
+      failure_reason:
+        row.outcome === 'FAILED' && row.failure_reason ? String(row.failure_reason) : null,
+    }));
 
     const response: AnalyticsResponse = {
       total_calls: totalCalls,
@@ -165,10 +134,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error(
-      'Failed to load HealthSaathi analytics:',
-      error,
-    );
+    console.error('Failed to load HealthSaathi analytics:', error);
 
     return NextResponse.json(
       {
@@ -179,7 +145,7 @@ export async function GET() {
         headers: {
           'Cache-Control': 'no-store',
         },
-      },
+      }
     );
   }
 }

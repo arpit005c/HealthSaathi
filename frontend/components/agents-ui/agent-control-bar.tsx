@@ -21,24 +21,24 @@ import {
 import { cn } from '@/lib/shadcn/utils';
 
 const LK_TOGGLE_VARIANT_1 = [
-  'data-[state=off]:bg-accent data-[state=off]:hover:bg-foreground/10',
-  'data-[state=off]:[&_~_button]:bg-accent data-[state=off]:[&_~_button]:hover:bg-foreground/10',
-  'data-[state=off]:border-border data-[state=off]:hover:border-foreground/12',
-  'data-[state=off]:[&_~_button]:border-border data-[state=off]:[&_~_button]:hover:border-foreground/12',
+  'data-[state=off]:bg-secondary/50 data-[state=off]:hover:bg-secondary',
+  'data-[state=off]:[&_~_button]:bg-secondary/50 data-[state=off]:[&_~_button]:hover:bg-secondary',
+  'data-[state=off]:border-transparent data-[state=off]:hover:border-primary/10',
+  'data-[state=off]:[&_~_button]:border-transparent data-[state=off]:[&_~_button]:hover:border-primary/10',
   'data-[state=off]:text-destructive data-[state=off]:hover:text-destructive data-[state=off]:focus:text-destructive',
-  'data-[state=off]:focus-visible:ring-foreground/12 data-[state=off]:focus-visible:border-ring',
-  'dark:data-[state=off]:[&_~_button]:bg-accent dark:data-[state=off]:[&_~_button]:hover:bg-foreground/10',
+  'data-[state=off]:focus-visible:ring-primary/20 data-[state=off]:focus-visible:border-primary',
+  'dark:data-[state=off]:[&_~_button]:bg-secondary/20 dark:data-[state=off]:[&_~_button]:hover:bg-secondary/40',
 ];
 
 const LK_TOGGLE_VARIANT_2 = [
-  'data-[state=off]:bg-accent data-[state=off]:hover:bg-foreground/10',
-  'data-[state=off]:border-border data-[state=off]:hover:border-foreground/12',
-  'data-[state=off]:focus-visible:border-ring data-[state=off]:focus-visible:ring-foreground/12',
-  'data-[state=off]:text-foreground data-[state=off]:hover:text-foreground data-[state=off]:focus:text-foreground',
-  'data-[state=on]:bg-blue-500/20 data-[state=on]:hover:bg-blue-500/30',
-  'data-[state=on]:border-blue-700/10 data-[state=on]:text-blue-700 data-[state=on]:ring-blue-700/30',
-  'data-[state=on]:focus-visible:border-blue-700/50',
-  'dark:data-[state=on]:bg-blue-500/20 dark:data-[state=on]:text-blue-300',
+  'data-[state=off]:bg-transparent data-[state=off]:hover:bg-secondary',
+  'data-[state=off]:border-transparent data-[state=off]:hover:border-primary/10',
+  'data-[state=off]:focus-visible:border-primary data-[state=off]:focus-visible:ring-primary/20',
+  'data-[state=off]:text-muted-foreground data-[state=off]:hover:text-primary data-[state=off]:focus:text-primary',
+  'data-[state=on]:bg-primary/10 data-[state=on]:hover:bg-primary/20',
+  'data-[state=on]:border-primary/20 data-[state=on]:text-primary data-[state=on]:ring-primary/30',
+  'data-[state=on]:focus-visible:border-primary/50',
+  'dark:data-[state=on]:bg-primary/20 dark:data-[state=on]:text-primary-foreground',
 ];
 
 const MOTION_PROPS: MotionProps = {
@@ -288,8 +288,8 @@ export function AgentControlBar({
     <div
       aria-label="Voice assistant controls"
       className={cn(
-        'bg-background border-input/50 dark:border-muted flex flex-col border p-3 drop-shadow-md/3',
-        variant === 'livekit' ? 'rounded-[31px]' : 'rounded-lg',
+        'bg-background/95 border-primary/10 flex flex-col border p-2.5 shadow-[0_8px_30px_rgb(0,0,0,0.06)] backdrop-blur-md',
+        variant === 'livekit' ? 'rounded-full' : 'rounded-xl',
         className
       )}
       {...props}
@@ -393,11 +393,11 @@ export function AgentControlBar({
             disabled={!isConnected}
             className={cn(
               variant === 'livekit' &&
-                'bg-destructive/10 dark:bg-destructive/10 text-destructive hover:bg-destructive/20 dark:hover:bg-destructive/20 focus:bg-destructive/20 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/4 rounded-full font-mono text-xs font-bold tracking-wider'
+                'bg-destructive/10 dark:bg-destructive/20 text-destructive hover:bg-destructive/20 dark:hover:bg-destructive/30 focus:bg-destructive/20 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 ml-1 rounded-full text-xs font-bold tracking-wider shadow-sm transition-colors'
             )}
           >
-            <span className="hidden md:inline">END CALL</span>
-            <span className="inline md:hidden">END</span>
+            <span className="hidden md:inline">End Session</span>
+            <span className="inline md:hidden">End</span>
           </AgentDisconnectButton>
         )}
       </div>

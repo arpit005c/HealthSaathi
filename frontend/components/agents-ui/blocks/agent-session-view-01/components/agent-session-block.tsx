@@ -2,12 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, type MotionProps, motion } from 'motion/react';
-import {
-  useAgent,
-  useSessionContext,
-  useSessionMessages,
-} from '@livekit/components-react';
-
+import { useAgent, useSessionContext, useSessionMessages } from '@livekit/components-react';
 import { AgentChatTranscript } from '@/components/agents-ui/agent-chat-transcript';
 import {
   AgentControlBar,
@@ -15,7 +10,6 @@ import {
 } from '@/components/agents-ui/agent-control-bar';
 import { Shimmer } from '@/components/ai-elements/shimmer';
 import { cn } from '@/lib/shadcn/utils';
-
 import { TileLayout } from './tile-view';
 
 const MotionMessage = motion.create(Shimmer);
@@ -116,44 +110,44 @@ export function Fade({ top = false, bottom = false, className }: FadeProps) {
 function AgentStatus({ state }: { state: string }) {
   const status = {
     connecting: {
-      label: 'Connecting to HealthSaathi...',
-      description: 'Please wait while we connect you.',
+      label: 'Connecting securely...',
+      description: 'Establishing private connection.',
       indicator: 'Connecting',
     },
 
     initializing: {
-      label: 'Getting HealthSaathi ready...',
-      description: 'Almost ready.',
+      label: 'Preparing HealthSaathi...',
+      description: 'Accessing medical knowledge base.',
       indicator: 'Preparing',
     },
 
     listening: {
-      label: 'Listening to you',
-      description: 'Go ahead, I am listening.',
+      label: 'I am listening...',
+      description: 'Please describe your symptoms or ask a question.',
       indicator: 'Listening',
     },
 
     thinking: {
-      label: 'HealthSaathi is thinking...',
-      description: 'Please give me a moment.',
+      label: 'Analyzing...',
+      description: 'Reviewing your information.',
       indicator: 'Thinking',
     },
 
     speaking: {
       label: 'HealthSaathi is speaking',
-      description: 'You can listen to the response.',
+      description: 'Providing your health insights.',
       indicator: 'Speaking',
     },
 
     disconnected: {
-      label: 'Conversation ended',
-      description: 'You can start another conversation anytime.',
+      label: 'Consultation ended',
+      description: 'You can start a new session anytime.',
       indicator: 'Ended',
     },
 
     failed: {
-      label: 'Connection problem',
-      description: 'Please try starting the conversation again.',
+      label: 'Connection interrupted',
+      description: 'Please check your network and try again.',
       indicator: 'Error',
     },
   }[state] ?? {
@@ -163,18 +157,18 @@ function AgentStatus({ state }: { state: string }) {
   };
 
   return (
-    <div className="pointer-events-none absolute left-1/2 top-6 z-40 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 text-center">
-      <div className="bg-background/90 border-border rounded-2xl border px-5 py-3 shadow-lg backdrop-blur">
-        <div className="mb-1 flex items-center justify-center gap-2">
+    <div className="pointer-events-none absolute top-6 left-1/2 z-40 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 text-center transition-all duration-500 ease-in-out">
+      <div className="bg-background/95 border-primary/20 rounded-2xl border px-5 py-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-md">
+        <div className="mb-2 flex items-center justify-center gap-2">
           <span
             className={cn(
-              'h-2 w-2 rounded-full',
-              state === 'listening' && 'animate-pulse bg-green-500',
-              state === 'speaking' && 'animate-pulse bg-blue-500',
-              state === 'thinking' && 'animate-pulse bg-yellow-500',
-              state === 'connecting' && 'animate-pulse bg-yellow-500',
-              state === 'initializing' && 'animate-pulse bg-yellow-500',
-              state === 'failed' && 'bg-red-500',
+              'h-2.5 w-2.5 rounded-full shadow-sm',
+              state === 'listening' && 'animate-pulse bg-emerald-500 shadow-emerald-500/50',
+              state === 'speaking' && 'bg-primary shadow-primary/50 animate-pulse',
+              state === 'thinking' && 'bg-accent shadow-accent/50 animate-pulse',
+              state === 'connecting' && 'animate-pulse bg-amber-400 shadow-amber-400/50',
+              state === 'initializing' && 'animate-pulse bg-amber-400 shadow-amber-400/50',
+              state === 'failed' && 'bg-destructive shadow-destructive/50',
               state === 'disconnected' && 'bg-muted-foreground',
               ![
                 'listening',
@@ -184,20 +178,18 @@ function AgentStatus({ state }: { state: string }) {
                 'initializing',
                 'failed',
                 'disconnected',
-              ].includes(state) && 'bg-green-500'
+              ].includes(state) && 'bg-emerald-500 shadow-emerald-500/50'
             )}
           />
 
-          <span className="text-muted-foreground text-[10px] font-semibold tracking-widest uppercase">
+          <span className="text-primary text-[10px] font-bold tracking-[0.2em] uppercase">
             {status.indicator}
           </span>
         </div>
 
-        <p className="text-sm font-semibold">{status.label}</p>
+        <p className="text-foreground text-sm font-semibold">{status.label}</p>
 
-        <p className="text-muted-foreground mt-1 text-xs">
-          {status.description}
-        </p>
+        <p className="text-muted-foreground mt-1 text-xs font-medium">{status.description}</p>
       </div>
     </div>
   );
@@ -320,10 +312,7 @@ export function AgentSessionView_01({
   return (
     <section
       ref={ref}
-      className={cn(
-        'bg-background relative z-10 h-full w-full overflow-hidden',
-        className
-      )}
+      className={cn('bg-background relative z-10 h-full w-full overflow-hidden', className)}
       {...props}
     >
       {/* HealthSaathi agent status */}
@@ -384,10 +373,7 @@ export function AgentSessionView_01({
         )}
 
         <div className="bg-background relative mx-auto max-w-2xl pb-3 md:pb-12">
-          <Fade
-            bottom
-            className="absolute inset-x-0 top-0 h-4 -translate-y-full"
-          />
+          <Fade bottom className="absolute inset-x-0 top-0 h-4 -translate-y-full" />
 
           <AgentControlBar
             variant="livekit"

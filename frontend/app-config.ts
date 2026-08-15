@@ -33,9 +33,10 @@ export interface AppConfig {
 }
 
 export const APP_CONFIG_DEFAULTS: AppConfig = {
-  companyName: 'Murf AI',
-  pageTitle: 'Voice Agent Starter',
-  pageDescription: 'A voice agent powered by Murf Falcon — the fastest TTS API',
+  companyName: 'HealthSaathi',
+  pageTitle: 'HealthSaathi | AI Voice Health Assistant',
+  pageDescription:
+    'Your secure, multilingual AI voice assistant for health and wellness consultations.',
 
   supportsChatInput: true,
   supportsVideoInput: true,
@@ -43,26 +44,17 @@ export const APP_CONFIG_DEFAULTS: AppConfig = {
   isPreConnectBufferEnabled: true,
 
   logo: '/murf-logo.svg',
-  accent: '#6366F1',
+  accent: '#0284c7', // Medical Blue
   logoDark: '/murf-logo-dark.svg',
-  accentDark: '#818cf8',
-  startButtonText: 'Start talking',
+  accentDark: '#38bdf8', // Light Medical Blue
+  startButtonText: 'Start Consultation',
 
-  // optional: audio visualization configuration
-  // audioVisualizerType: 'bar',
-  // audioVisualizerColor: '#002cf2',
-  // audioVisualizerColorDark: '#1fd5f9',
-  // audioVisualizerColorShift: 0.3,
-  // audioVisualizerBarCount: 5,
-  // audioVisualizerType: 'radial',
-  // audioVisualizerRadialBarCount: 24,
-  // audioVisualizerRadialRadius: 100,
-  // audioVisualizerType: 'grid',
-  // audioVisualizerGridRowCount: 25,
-  // audioVisualizerGridColumnCount: 25,
-  // audioVisualizerType: 'wave',
-  // audioVisualizerWaveLineWidth: 3,
-  // audioVisualizerType: 'aura',
+  // HealthSaathi Medical Visualizer (EKG/Wave style)
+  audioVisualizerType: 'wave',
+  audioVisualizerColor: '#0284c7', // Medical blue for light mode
+  audioVisualizerColorDark: '#34d399', // Calming emerald for dark mode
+  audioVisualizerWaveLineWidth: 3,
+  audioVisualizerColorShift: 0.1, // Subtle calming shift
 
   // agent dispatch configuration
   agentName: process.env.AGENT_NAME ?? undefined,

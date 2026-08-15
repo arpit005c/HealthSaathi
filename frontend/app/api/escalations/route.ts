@@ -10,7 +10,7 @@ export async function GET() {
       'backend',
       'src',
       'escalation',
-      'escalation_store.json',
+      'escalation_store.json'
     );
 
     const fileContents = await fs.readFile(filePath, 'utf-8');
@@ -29,7 +29,7 @@ export async function GET() {
         escalations: [],
         error: 'Unable to load human-help requests.',
       },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

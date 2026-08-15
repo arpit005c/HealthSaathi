@@ -30,9 +30,11 @@ export type MessageContentProps = HTMLAttributes<HTMLDivElement>;
 export const MessageContent = ({ children, className, ...props }: MessageContentProps) => (
   <div
     className={cn(
-      'is-user:dark flex w-fit max-w-full min-w-0 flex-col gap-2 overflow-hidden text-sm',
-      'group-[.is-user]:bg-secondary group-[.is-user]:text-foreground group-[.is-user]:ml-auto group-[.is-user]:rounded-lg group-[.is-user]:px-4 group-[.is-user]:py-3',
-      'group-[.is-assistant]:text-foreground',
+      'flex w-fit max-w-full min-w-0 flex-col gap-2 overflow-hidden text-sm leading-relaxed transition-all',
+      // User message: Medical Blue bubble
+      'group-[.is-user]:bg-primary group-[.is-user]:text-primary-foreground group-[.is-user]:ml-auto group-[.is-user]:rounded-2xl group-[.is-user]:rounded-tr-sm group-[.is-user]:px-5 group-[.is-user]:py-3.5 group-[.is-user]:shadow-sm',
+      // Assistant message: Clean medical card
+      'group-[.is-assistant]:bg-background/95 group-[.is-assistant]:text-foreground group-[.is-assistant]:border-primary/10 group-[.is-assistant]:mr-auto group-[.is-assistant]:rounded-2xl group-[.is-assistant]:rounded-tl-sm group-[.is-assistant]:border group-[.is-assistant]:px-5 group-[.is-assistant]:py-3.5 group-[.is-assistant]:shadow-sm group-[.is-assistant]:backdrop-blur-sm',
       className
     )}
     {...props}
